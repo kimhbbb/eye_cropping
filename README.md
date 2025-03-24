@@ -7,6 +7,8 @@
 먼저 RGB image로 detection model을 만들고, 후에 IR image로 traninig 시켜 적합한 model 만들자.  
 
 # Dataset
+**사용할 모델(detection / landmark)가 정해져야 명확해질 거 같긴 함**     
+
 ### Detection
 (pupil 실험)의 input image size = 224x224.  
 
@@ -19,9 +21,22 @@
 > EIMDSD: 승인 받아야 함.
 
 ### Landmark    
-얼굴 측면에서의 eye detect를 생각했을 때, landmark 이용하는 것도 좋을 거 같음.  
-![Logo](https://github.com/사용자명/저장소명/raw/브랜치명/경로/파일명.png)
-![Logo](https://github.com/사용자명/저장소명/raw/브랜치명/경로/파일명.png)
+<span>
+  <img src="https://github.com/kimhbbb/eye_cropping/blob/main/assets/11.jpg" style="width:400px; margin-right:10px;">
+  <img src="https://github.com/kimhbbb/eye_cropping/blob/main/assets/22.jpg" style="width:400px;">
+</span>
+
+위 이미지와 같이 landmark를 이용했을 때(mediapipe face mesh), detection model보다 측면에서의 탐지 성능이 좋을 거 같음.(확실X)  
+
+(% 고민사항)  
+- real-time을 고려했을 때, 가벼운 모델 사용해야 함.
+- 측면에 대해서 detection과 landmark 성능을 비교해본 건 아님.
+- 위 사항들이 걸림돌이 되지 않는다면 landmark 사용하는 게 좋을 거 같음.(내 생각)
+
+# Papers
+
+
+# Implementation
 
 
 

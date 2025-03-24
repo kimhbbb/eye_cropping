@@ -7,6 +7,7 @@
 먼저 RGB image로 detection model을 만들고, 후에 IR image로 traninig 시켜 적합한 model 만들자.  
 
 # Dataset
+### Detection
 (pupil 실험)의 input image size = 224x224.  
 
 원거리가 내가 생각하는 엄청 먼 거리까지를 의미하는 거 같지는 않고, 상반신 정도에서 detect를 수행하려는 거 같음.  
@@ -15,6 +16,15 @@
 > CASIA?
 
 (조사)
+> EIMDSD: 승인 받아야 함.
+
+### Landmark    
+얼굴 측면에서의 eye detect를 생각했을 때, landmark 이용하는 것도 좋을 거 같음.  
+![Logo](https://github.com/사용자명/저장소명/raw/브랜치명/경로/파일명.png)
+![Logo](https://github.com/사용자명/저장소명/raw/브랜치명/경로/파일명.png)
+
+
+
 
 
 <details>

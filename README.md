@@ -22,11 +22,13 @@
 
 ### Landmark    
 <span>
-  <img src="https://github.com/kimhbbb/eye_cropping/blob/main/assets/11.jpg" style="width:400px; margin-right:10px;">
-  <img src="https://github.com/kimhbbb/eye_cropping/blob/main/assets/22.jpg" style="width:400px;">
+  <img src="./assets/11.jpg" style="width:400px; margin-right:10px;">
+  <img src="./assets/22.jpg" style="width:400px;">
 </span>
 
-위 이미지와 같이 landmark를 이용했을 때(mediapipe face mesh), detection model보다 측면에서의 탐지 성능이 좋을 거 같음.(확실X)  
+위 이미지와 같이 landmark를 이용했을 때(mediapipe face mesh)
+- 측면 데이터를 더 잘 잡음(내생각.확실X)
+- blink에 대해서도 계속 추적 가능함(내 생각이지만? 맞을 거 같음.확실X)
 
 (% 고민사항)  
 - real-time을 고려했을 때, 가벼운 모델 사용해야 함.
@@ -34,7 +36,9 @@
 - 위 사항들이 걸림돌이 되지 않는다면 landmark 사용하는 게 좋을 거 같음.(내 생각)
 
 # Papers
-
+### Landmark
+**SPIGA: Shape Preserving Facial Landmarks with Graph Attention Networks(BMVC, 2022)**
+- [SPIGA 구현]("./models/eyeSPIGA")
 
 # Implementation
 

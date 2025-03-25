@@ -47,7 +47,7 @@ cascaded GAT regressor는 positional encoding + attention mechanism 활용하여
 
 ## 2. Shape Regressor Model
 
-![image.png]("../../assets/spiga_fig1.png")
+![image.png](../../assets/spiga_fig1.png)
 
 propose 얼굴 shape을 유지하면서 landmark coordinate를 점진적으로 조정하는 a coarse-to-fine cascade of landmark regressor
 
@@ -147,7 +147,7 @@ cascade의 각 setp, 각 landmakr에서, backbone network로부터 추출한 vis
 
  
 
-![image.png]("../../assets/spiga_fig2.png")
+![image.png](../../assets/spiga_fig2.png)
 
 step regressor 아키텍처는 Attentional Graph Neural Net에서 영감받은 GAT 층들이 stacked 되어 구성됨.
 

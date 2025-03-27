@@ -1,5 +1,5 @@
 <details>
-<summary>1차 요약</summary>
+<summary>단순 읽기</summary>
 
 # SPIGA: Shape Preserving Facial Landmarks with Graph Attention
 
@@ -191,3 +191,65 @@ MTN backbone이 학습된 상태에서, 우리는 train the cascade with the los
 
 ---
 </details>
+
+## Introduction
+- CNN은 spatial 정보를 잘 학습하지 못하기 때문에 face structure의 global representation을 학습할 수 없음.  
+  이 때문에 ambiguity or noise contamination에 취약함. (occlusion, heavy make-up, blur and extreme illuminations or poses)  
+    CNN이 local하게 동작하니까, 멀리 떨어진 landmark 간의 관계를 잘 포착할 수 없음.    
+  - 얼굴은 structured object이기 때문에 landmark끼리는 연관성이 있기 때문에 이를 고려해주어야 함.  
+  
+  이를 개선하고자 한 방법들은 존재했지만, poor Initialization & advanced attention mechanism 부족 문제 때문에 성능 향상 기대 힘듦.
+
+**그래서 SPIGA 제안**    
+- traditional regressor cascade approach & algorithm(multi-stage heatmap backbone + cascade of GAT regressors)  
+    - backbone: top-performing facial appearance representation
+    - cascaded GAT regressor: geometrical relationship among landmarks
+    - coarse-to-fine feature extraction procedure & good Initialization
+
+
+## Shape Regressor Model
+- multi-task CNN backbone (for the Initialization & the local appearance represenatation)
+- face의 초기 shape: $\textbf{x}_0 \in \mathbb{R}^{L \times 2}$ 
+    - L개의 landmark에 대해서, backbone에서 predict한 pose를 이용하여 3D rigid face mesh로부터 proejction 됨.
+- GAT regressor는 변위 벡터 $\Delta \textbf{x}_t$ 를 업데이트하며 landmark location 수정.
+
+## Initialization by Head Pose Estimation
+- MTN은 M(=4)개의 Enc-Dec (HG module)의 cascade 구조
+    - 각 HG module의 two task branch 끼리는 shared encoder.
+        - 3D head pose estimation  
+        h번째 module head pose는 L2 loss $\mathcal{L}_{\mathbf{p}}^{h}(\mathbf{p}, \tilde{\mathbf{p}}) = \|\tilde{\mathbf{p}} - \mathbf{p}\|^2.
+$  
+        ($\tilde{\mathbf{p}}$는 3D rigid head model 사용해서 얻음)
+        - landmark estimation decoder  
+        heatmap 상에서 중요 landmark에 더 집중하도록 하는 방법으로 향상시킨 smooth L1 loss를 이용하여 coordinate 최적화 진행 (**Adaptive Wing Loss 읽어봐야 할 듯**)  
+        최종 loss $\mathcal{L}_{\text{Ind}} = \sum_{h=1}^{M} 2^{h-1} \left( \lambda_c \mathcal{L}_{\text{coord}}^h + \lambda_{\text{att}} \mathcal{L}_{\text{att}}^h \right)
+$, ($\lambda$는 각각 4, 50)
+
+1. landmark task만을 이용하여 pretrain the network  
+last HG 모듈에서 p를 추출.   
+3D model에 p를 대입하여 3D -> 2D projection하여 $\textbf{x}_0$를 얻음.
+2. fine-tune with tasks(landmark & pose)
+
+## Geometric and Visual Feature Extraction
+cascaded regressor의 각 step에서의 input features = local apprearance(visual features) at each landmark + global representation(geometric features) of the facical structure  
+
+- Local appearance(visual)  
+    - MTN에서 마지막 HG module의 output feature map = F   
+        F에서 landmark 위치 $\textbf{x}_{t-1}^l$을 중심으로, $w_t \times w_t$ 사이즈의 Window $W_t$로부터 local appearance 정보 추출. ($w_t$는 iteratively reduce. coarse-to-fine)  
+        Use a fixed affine transform with the grid generator and sampler of the Spatial Transformer Networks to have a differential crop operation of $W_t$  
+        ($w_t$ 사이즈와 상관없이, fixed size 7x7x256 $W_t$) 
+    - convolutional layers 이용하여 visual features $\textbf{v}_t^l$ 추출
+
+- Positional information(global represenatation)  
+    - landmark 사이의 상대적 거리는 enhanced geometrical features 제공  
+        - landmark의 absolute location은 사진 위치, 회전 등의 이유로 사진에 따라 location 값이 달라짐.
+        - face의 landmark 간 비율은 일정 -> 상대적 위치를 가짐
+        - 상대적 위치를 이용하여 face structure의 전체 구조 파악 용이  
+    - 상대적인 positional information은 landmark 사이의 변위 벡터로 정의될 수 있음.    
+        - 변위 벡터: $\mathbf{q}_t^l = \left\{ \mathbf{x}_{t-1}^i - \mathbf{x}_{t-1}^l \right\}_{i \ne l} \in \mathbb{R}^{2 \times (L - 1)}$  
+        - MLP를 이용하여 $\mathbf{q}_t^l$로부터 고차원 embedding 학습, $\mathbf{r}_t^l = \Phi_t \left( \mathbf{q}_t^l \right)$  
+        - $\mathbf{r}_t^l$ 이놈이 visual local appearance와 facial shape information 통합을 용이하게 함.  
+    - $\Delta \textbf{x}_t$ 계산을 위한 feature vector $\textbf{f}_t^l$ 추가
+        - ($\textbf{x}_{t-1}$로부터 계산) backbone으로부터 추출된 visual features $\textbf{v}_t^l$과 relative positional features $\textbf{r}_t^l$ 통해서 encoded feature $\mathbf{f}_t^l = \mathbf{v}_t^l + \mathbf{r}_t^l$
+
+## Cascade Shape Regressor Using GATs

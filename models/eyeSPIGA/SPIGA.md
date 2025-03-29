@@ -253,3 +253,22 @@ cascaded regressor의 각 step에서의 input features = local apprearance(visua
         - ($\textbf{x}_{t-1}$로부터 계산) backbone으로부터 추출된 visual features $\textbf{v}_t^l$과 relative positional features $\textbf{r}_t^l$ 통해서 encoded feature $\mathbf{f}_t^l = \mathbf{v}_t^l + \mathbf{r}_t^l$
 
 ## Cascade Shape Regressor Using GATs
+facial shape을 landmark 위치 $\textbf{x}_t$를 노드로 하는 하나의 densely connected graph로 생각하자  
+node 간 shared 정보에 weight를 주기 위해, GAT layer s마다 dynamic adjacency matrix $\mathbf{A}_t^s$를 계산  
+graph에서 다른 landmark들로 향하는 attention으로써 matrix 학습 (landmark가 landmark와 정보를 주고 받는 법)  
+
+첫 번째 GAT layer의 input = encoded features $\left\{ \mathbf{f}_t^i \right\}_{i=1}^L$  
+s번째 layer 이후의 updated feature vector = $\mathbf{f}^{i,s} = \mathbf{f}^{i,s-1} + \widetilde{MLP} \left( \left[ \mathbf{f}^{i,s-1} \,\|\, \mathbf{m}^{i,s} \right] \right)$  
+$\textbf{m}^{i,s}$는 the information aggregated, or message, of the nodes neighboring $i$  
+- message generation procedure
+    - query vector $\textbf{h}_q^{i,s}$, landmark $i$에 할당된 query vector
+    - key $\textbf{h}_k^{j,s}$, 나머지 landmarks $j$의 key vector
+    - landmark $i$ -> $j$로의 attention weight = Softmax over the key-query similarities, $\alpha_{ij} = \mathrm{SoftMax}_j \left( \mathbf{h}_q^{i,s} \cdot \mathbf{h}_k^{j,s} \right)$, $\alpha_{ij}$는 matrix  $\mathbf{A}_t^s$의 원소.
+    - 전달되는 메시지 $\textbf{m}^{i,s}$는 weighted average of the value vectors: $\mathbf{m}^{i,s} = \sum_{i \ne j} \alpha_{ij} \mathbf{h}_v^{j,s}$
+        - $\mathbf{h}_q^{i,s} = \mathbf{W}_1^s \mathbf{f}^{i,s} + \mathbf{b}_1^s,\quad
+            \mathbf{h}_k^{j,s} = \mathbf{W}_2^s \mathbf{f}^{j,s} + \mathbf{b}_2^s,\quad
+            \mathbf{h}_v^{j,s} = \mathbf{W}_3^s \mathbf{f}^{j,s} + \mathbf{b}_3^s$
+
+마지막 GAT layer output $\textbf{f}_t^{i,4}$는 decoder에서 처리되어 $\Delta \mathbf{X}_t^i$ 얻음.  
+ArcTan & scaling 통해서 [-$w_t/2$/$w_t/2$]로 $\Delta \mathbf{X}_t^i$를 제한함.  
+$\mathcal{L}_{CR} = \sum_{t=1}^{K} L1_{smooth} \left[ \tilde{\mathbf{x}} - \left( \mathbf{x}_{t-1} + \Delta \mathbf{x}_t \right) \right]$

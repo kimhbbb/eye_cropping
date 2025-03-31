@@ -2,6 +2,7 @@ import cv2
 from ultralytics import YOLO
 import mediapipe as mp
 import numpy as np
+import visdom
 
 class Landmark:
     def __init__(self):
@@ -107,9 +108,15 @@ class Landmark:
         else:
             return eye_img
 
+def cropping(img, x, y):
+    h, w = img.shape[:2]
+    y1, y2 = max(0, y-112), min(h, y+112)
+    x1, x2 = max(0, x-112), min(w, x+112)
+    return img[y1:y2, x1:x2]
 
 def main():
-    model = YOLO("./models/yolo+landmark/yolov8n-face.pt")
+    vis = visdom.Visdom()
+    model = YOLO("./models/yolo+landmark/yolov8n-face_custom.pt")
     
     landmark_model = Landmark()
     
@@ -173,7 +180,8 @@ def main():
                         h, w = eye_img.shape[:2]
                         display_frame[10+h+10:10+h+10+h, -w-10:-10] = eye_img
         
-        cv2.imshow("Real-time Eye Detection", display_frame)
+        # cv2.imshow("Real-time Eye Detection", display_frame)
+        vis.image(display_frame)
         
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break

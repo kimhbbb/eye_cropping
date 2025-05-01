@@ -7,11 +7,36 @@ import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
 
+class ProgressiveUnfreezeCallback():
+    def __init__(self, freeze_layers, unfreeze_epoch):
+        self.freeze_layers = freeze_layers
+        self.unfreeze_epoch = unfreeze_epoch
+
+    def __call__(self, trainer):
+        if hasattr(self, 'on_train_epoch_end'):
+            self.on_train_epoch_end(trainer)
+    
+    def on_train_epoch_end(self, trainer):
+        epoch = trainer.epoch
+
+        if epoch == 0:
+            for i in self.freeze_layers:
+                try:
+                    for param in trainer.model.model[i].parameters():
+                        param.requires_grad = False
+                    print(f"[에폭 {epoch}] 레이어 {i} 동결 완료")
+                except Exception as e:
+                    print(f"[에폭 {epoch}] 레이어 {i} 동결 실패: {e}")
+        elif epoch == self.unfreeze_epoch:
+            for param in trainer.model.parameters():
+                param.require_grad = True
+            print(f"[에폭 {epoch}] 모든 레이어 해동 완료")
+
 class NIRDetector():
     def __init__(self, config_path = None):
         self.cfg = {
             'model_type': 'yolov8s.pt',
-            'data_yaml': 'eyes.yaml',
+            'data_yaml': '/data/data.yaml',
             'epochs': 50,
             'batch_size': 16,
             'image_size': 640,
@@ -33,33 +58,36 @@ class NIRDetector():
 
         self.model = None
 
-    def create_data_yaml(self, train_path, val_path, class_names=['left_eye', 'right_eye']):
-        data_dict = {
-            'path': os.path.dirname(os.path.abspath(train_path)),
-            'train': train_path,
-            'val': val_path,
-            'nc': len(class_names),
-            'names': class_names
-        }
+    # def create_data_yaml(self, train_path, val_path, class_names=['left_eye', 'right_eye']):
+    #     data_dict = {
+    #         'path': os.path.dirname(os.path.abspath(train_path)),
+    #         'train': train_path,
+    #         'val': val_path,
+    #         'nc': len(class_names),
+    #         'names': class_names
+    #     }
 
-        yaml_path = os.path.join(self.cfg['output_dir'], 'dataset.yaml')
-        with open(yaml_path, 'w') as f:
-            yaml.dump(data_dict, f)
+    #     yaml_path = os.path.join(self.cfg['output_dir'], 'dataset.yaml')
+    #     with open(yaml_path, 'w') as f:
+    #         yaml.dump(data_dict, f)
         
-        self.cfg['data_yaml'] = yaml_path
-        print(f"데이터 YAML 파일 생성 완료: {yaml_path}")
+    #     self.cfg['data_yaml'] = yaml_path
+    #     print(f"데이터 YAML 파일 생성 완료: {yaml_path}")
 
-        return yaml_path
+    #     return yaml_path
 
     def prepare_model(self):
         self.model = YOLO(self.cfg['model_type'])
 
-        if self.cfg['freeze_layers'] and not self.cfg['progressive_unfreeze']:
-            for i in self.cfg['freeze_layers']:
-                for param in self.model.model.model[i].parameters():
-                    param.requires_grad = False
-
-            print(f"레이어 {self.cfg['freeze_layers']} 동결")
+        # if self.cfg['freeze_layer'] and not self.cfg['progressive_unfreeze']:
+        #     print(f"freeze 시작: 레이어 인덱스 {self.cfg['freeze_layer']}")
+        #     for i in self.cfg['freeze_layer']:
+        #         try:
+        #             for param in self.model.model.model[i].parameters():
+        #                 param.requires_grad = False
+        #             print(f"레이어 {i} 동결 완료: {type(self.model.model.model[i])}")
+        #         except Exception as e:
+        #             print(f"레이어 {i} 동결 실패: {e}")
         
         return self.model
     
@@ -67,10 +95,15 @@ class NIRDetector():
         if self.model is None:
             self.prepare_model()
 
-        # # 점진적 해동 콜백 정의
+        # 점진적 해동 콜백 정의
         # callbacks = []
         # if self.cfg['progressive_unfreeze']:
         #     callbacks.append(self.progressive_unfreeze_callback)
+
+        progreesive_callback = ProgressiveUnfreezeCallback(freeze_layers=self.cfg['freeze_layers'], 
+                                                   unfreeze_epoch=self.cfg['unfreeze_epoch'])
+        
+        self.model.add_callback('on_train_epoch_end', progreesive_callback)
 
         results = self.model.train(
             data=self.cfg['data_yaml'],
@@ -82,30 +115,30 @@ class NIRDetector():
             patience=self.cfg['patience'],
             project=self.cfg['output_dir'],
             name='train',
-            freeze=self.cfg['freeze_layers'] if not self.cfg['progressive_unfreeze'] else None,
-            # callbacks=callbacks
+            freeze=self.cfg['freeze_layers'] if not self.cfg['progressive_unfreeze'] else None, # 이거 써야하나?
+            # callbacks=[progreesive_callback] # 콜백 함수 커스터마이징
         )
         
         print(f"학습 완료. 결과 저장 경로: {self.model.trainer.save_dir}")
         return results
     
-    def progressive_unfreeze_callback(self, trainer):
-        """
-        점진적 레이어 해동을 위한 콜백 함수
-        """
-        if not hasattr(trainer, 'epoch') or trainer.epoch < self.cfg['unfreeze_epoch']:
-            # 초기 에폭: 레이어 동결
-            if trainer.epoch == 0:
-                for i in self.cfg['freeze_layers']:
-                    for param in trainer.model.model[i].parameters():
-                        param.requires_grad = False
-                print(f"레이어 {self.cfg['freeze_layers']} 동결 완료")
-        else:
-            # 일정 에폭 이후: 모든 레이어 해동
-            if trainer.epoch == self.cfg['unfreeze_epoch']:
-                for param in trainer.model.parameters():
-                    param.requires_grad = True
-                print(f"에폭 {trainer.epoch}: 모든 레이어 해동 완료")
+    # def progressive_unfreeze_callback(self, trainer):
+    #     """
+    #     점진적 레이어 해동을 위한 콜백 함수
+    #     """
+    #     if not hasattr(trainer, 'epoch') or trainer.epoch < self.cfg['unfreeze_epoch']:
+    #         # 초기 에폭: 레이어 동결
+    #         if trainer.epoch == 0:
+    #             for i in self.cfg['freeze_layers']:
+    #                 for param in trainer.model.model[i].parameters():
+    #                     param.requires_grad = False
+    #             print(f"레이어 {self.cfg['freeze_layers']} 동결 완료")
+    #     else:
+    #         # 일정 에폭 이후: 모든 레이어 해동
+    #         if trainer.epoch == self.cfg['unfreeze_epoch']:
+    #             for param in trainer.model.parameters():
+    #                 param.requires_grad = True
+    #             print(f"에폭 {trainer.epoch}: 모든 레이어 해동 완료")
 
     def validate(self, weights=None):
         """

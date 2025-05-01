@@ -1,6 +1,9 @@
 models/yolo_finetuning/data/
 models/yolo_finetuning/run_training.sh
 models/yolo_finetuning/nir_config.yaml
+models/yolo_finetuning/freeze_nir_eye_detection/
+models/yolo_finetuning/nir_eye_detection/
+models/yolo_finetuning/zero.py
 
 models/yolo+landmark/food_test/
 models/yolo+landmark/food_result/
